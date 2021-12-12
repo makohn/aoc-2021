@@ -11,3 +11,12 @@ fun readInput(name: String) = File("src", "$name.txt").readLines()
  * Converts string to md5 hash.
  */
 fun String.md5(): String = BigInteger(1, MessageDigest.getInstance("MD5").digest(toByteArray())).toString(16)
+
+/**
+ * Transposes a list
+ */
+fun <T> List<List<T>>.transpose(): List<List<T>> {
+    val result = (first().indices).map { mutableListOf<T>() }.toMutableList()
+    forEach { list -> result.zip(list).forEach { it.first.add(it.second) } }
+    return result
+}
