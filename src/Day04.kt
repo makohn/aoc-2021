@@ -10,30 +10,45 @@ fun main() {
         return games.chunked(boardSize)[index].filter { it > marker }.sum() * number
     }
 
-    fun part2(input: List<String>): Int = TODO()
+    fun part2(input: List<String>): Int {
+        val (numbers, games) = parseInput(input)
+        val (number, index) = evaluate(numbers, games) { false }
+        return games.chunked(boardSize)[index].filter { it > marker }.sum() * number
+    }
 
     val testInput = readInput("Day04_test")
     check(part1(testInput) == 4512)
-//    check(part2(testInput) == 230)
+    check(part2(testInput) == 1924)
 
     val input = readInput("Day04")
     println(part1(input))
-//    println(part2(input))
+    println(part2(input))
 }
 
-fun evaluate(numbers: List<Int>, games: MutableList<Int>): Pair<Int, Int> {
-    var index = invalidIndex
-    val winningNumber = numbers
+fun evaluate(numbers: List<Int>, games: MutableList<Int>, terminate: (Set<Int>) -> Boolean = Set<Int>::isNotEmpty)
+        : Pair<Int, Int> {
+    var winningIndex = invalidIndex
+    var winningNumber = invalidIndex
+    val indices = mutableSetOf<Int>()
+    numbers
         .dropWhile { number ->
             games.replaceAll { nr -> if (nr == number) marker else nr }
-            index = games
+            val index = games
+                .asSequence()
                 .chunked(boardSize)
                 .withIndex()
-                .firstOrNull(::isBingo)
-                ?.index?: invalidIndex
-            index == invalidIndex
-        }.first()
-    return winningNumber to index
+                .filter(::isBingo)
+                .map { it.index }
+                .filter { !indices.contains(it) }
+                .toList()
+            if (index.isNotEmpty()) {
+                winningIndex = index.last()
+                winningNumber = number
+                indices += index
+            }
+            !terminate(indices) && indices.size < games.size / 25
+        }
+    return winningNumber to winningIndex
 }
 
 fun parseInput(input: List<String>): Pair<List<Int>, MutableList<Int>> {
