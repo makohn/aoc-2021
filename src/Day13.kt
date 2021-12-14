@@ -6,16 +6,17 @@ fun main() {
     }
 
     fun part2(input: List<String>): Int {
-        return 0
+        val (dotInstructions, foldInstructions) = Day13Helper.parse(input)
+        return Day13Helper.fold(dotInstructions, foldInstructions, visualize = true)
     }
 
     val testInput = readInput("Day13_test")
     check(part1(testInput) == 17)
-//    check(part2(testInput) == 1924)
+    check(part2(testInput) == 16)
 
     val input = readInput("Day13")
     println(part1(input))
-//    println(part2(input))
+    println(part2(input))
 }
 
 object Day13Helper {
@@ -42,7 +43,6 @@ object Day13Helper {
         var height = transparent.maxOf { it.last() }
         if (visualize) visualize(transparent, width, height)
         foldInstructions.forEachIndexed { i, fold ->
-            if (i >= times) return@fold transparent.count()
             transparent = transparent.map { dot ->
                 dot[0] = if ((fold.first != 0) and (dot.first() > fold.first)) width - dot[0] - (fold.first - width/2) else dot[0]
                 dot[1] = if ((fold.second != 0) and (dot.last() > fold.second)) height - dot[1] - (fold.second - height/2) else dot[1]
@@ -53,6 +53,7 @@ object Day13Helper {
             width -= if (fold.first != 0) (width - fold.first + 1) else 0
             height -= if (fold.second != 0) (height - fold.second + 1) else 0
             if (visualize) visualize(transparent, width, height)
+            if (i >= times-1) return@fold transparent.count()
         }
         return -1
     }
