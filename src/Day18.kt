@@ -1,13 +1,15 @@
 fun main() {
     fun part1(input: List<String>): Int {
         val snailFishNumbers = Day18Helper.parse(input)
-        return snailFishNumbers.reduce { a, b ->
-            generateSequence<SnailFishNumber> (SnailFishPair(a, b)) { n -> n.reduce()?.let { n.apply(it) }}.last()
-        }.magnitude()
+        return snailFishNumbers.reduce { a, b -> a + b }.magnitude()
     }
 
     fun part2(input: List<String>): Int {
-        return 0
+        val snailFishNumbers = Day18Helper.parse(input)
+        return snailFishNumbers
+            .map { it to snailFishNumbers.filter { n -> n != it } }
+            .flatMap { it.second.map { n -> it.first + n } }
+            .maxOf { it.magnitude() }
     }
 
     // Magnitude tests
@@ -22,15 +24,15 @@ fun main() {
     // First test input
     val testInput = readInput("Day18_test")
     check(part1(testInput) == 3488)
-//    check(part2(testInput) == 112)
 
     // Second test input
     val testInput2 = readInput("Day18_test2")
     check(part1(testInput2) == 4140)
+    check(part2(testInput2) == 3993)
 
     val input = readInput("Day18")
     println(part1(input))
-//    println(part2(input))
+    println(part2(input))
 }
 
 sealed interface SnailFishNumber {
@@ -54,6 +56,9 @@ sealed interface SnailFishNumber {
             mapOf(it to SnailFishPair((it.value / 2).sn(),((it.value + 1) / 2).sn()))
         }
     }
+
+    operator fun plus(other: SnailFishNumber) =
+        generateSequence<SnailFishNumber> (SnailFishPair(this, other)) { n -> n.reduce()?.let { n.apply(it) }}.last()
 }
 class SnailFishInt(val value: Int): SnailFishNumber {
     override fun getInt(max: Int): SnailFishInt? = if (value >= max) this else null
