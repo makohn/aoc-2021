@@ -1,31 +1,23 @@
-import Day20.enhance
+import Day20.parse
+import Day20.runEnhancements
 
 fun main() {
 
     val day = "20"
 
     fun part1(input: List<String>): Int {
-        val algorithm = input.first().also { check(it.length == 512) }
-        var image = input.drop(2).flatMapIndexed { i, row ->
-            row.indicesOf('#').map { i to it }
-        }.toSet()
-
-        var bounds = image.bounds().apply(padding = 6)
-        repeat(2) {
-            image = enhance(image, algorithm, bounds)
-            bounds = bounds.apply(padding = -3)
-        }
-
-        return image.count()
+        val (algorithm, image) = parse(input)
+        return runEnhancements(image, algorithm, 2)
     }
 
     fun part2(input: List<String>): Int {
-        return 0
+        val (algorithm, image) = parse(input)
+        return runEnhancements(image, algorithm, 50)
     }
 
     val testInput = readInput("Day${day}_test")
     check(part1(testInput) == 35)
-    check(part2(testInput) == 0)
+    check(part2(testInput) == 3351)
 
     val input = readInput("Day${day}")
     println(part1(input))
@@ -52,6 +44,24 @@ fun Bounds.apply(padding: Int) = listOf(
 
 object Day20 {
 
+    fun runEnhancements(baseImage: Image, algorithm: String, count: Int): Int {
+        var image = baseImage
+        var bounds = image.bounds().apply(padding = count*4)
+        repeat(count) {
+            image = enhance(image, algorithm, bounds)
+            bounds = bounds.apply(padding = -3)
+        }
+        return image.count()
+    }
+
+    fun parse(input: List<String>): Pair<String, Image> {
+        val algorithm = input.first().also { check(it.length == 512) }
+        val image = input.drop(2).flatMapIndexed { i, row ->
+            row.indicesOf('#').map { i to it }
+        }.toSet()
+        return algorithm to image
+    }
+
     fun visualize(image: Image, padding: Int = 0) {
         val (minX, maxX, minY, maxY) = image.bounds()
         println("=".repeat(maxX - minX + padding*2 + 1))
@@ -64,7 +74,7 @@ object Day20 {
             }
         }
 
-    fun enhance(image: Image, algorithm: String, bounds: Bounds): Image {
+    private fun enhance(image: Image, algorithm: String, bounds: Bounds): Image {
         val (minX, maxX, minY, maxY) = bounds
         val outputImage = mutableSetOf<Pair<Int, Int>>()
         (minX .. maxX).forEach { x ->
