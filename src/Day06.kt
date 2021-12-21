@@ -1,3 +1,4 @@
+import Day06.count
 import Day06.iterate
 import Day06.parse
 
@@ -11,13 +12,16 @@ fun main() {
         return fish.count()
     }
 
-    fun part2(input: List<String>): Int {
-        return 0
+    fun part2(input: List<String>): Long {
+        val fish = parse(input)
+        val counts = MutableList(9) { 0L }
+        fish.forEach { counts[it]++ }
+        return count(counts, 256)
     }
 
     val testInput = readInput("Day${day}_test")
     check(part1(testInput, 18) == 26)
-    check(part2(testInput) == 0)
+    check(part2(testInput) == 26984457539L)
 
     val input = readInput("Day${day}")
     println(part1(input, 80))
@@ -37,5 +41,14 @@ object Day06 {
         repeat(newFish.count { it == -1 }) { newFish.add(8) }
         newFish = newFish.map { if (it == -1) 6 else it }.toMutableList()
         return newFish
+    }
+
+    fun count(counts: MutableList<Long>, n: Int): Long {
+        repeat(n) {
+            val nextGen = counts.removeFirst()
+            counts[6] += nextGen
+            counts.add(nextGen)
+        }
+        return counts.fold(0L) { acc, e -> acc + e}
     }
 }
