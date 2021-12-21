@@ -20,3 +20,5 @@ fun <T> List<List<T>>.transpose(): List<List<T>> {
     forEach { list -> result.zip(list).forEach { it.first.add(it.second) } }
     return result
 }
+
+data class Quadruple<T>(val x1: T, val x2: T, val x3: T, val x4: T)
