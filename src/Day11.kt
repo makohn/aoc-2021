@@ -7,30 +7,40 @@ fun main() {
         val n = grid.size
         val m = grid[0].size
         var flashes = 0
-        repeat(100) {
-            val flashed = mutableSetOf<Pair<Int, Int>>()
-            for (i in (0 until n)) for (j in (0 until m)) {
-                grid[i][j] += 1
-            }
-            for (i in (0 until n)) for (j in (0 until m)) {
-                if (grid[i][j] > 9) flashed += flash(i, j, grid, flashed)
-            }
-            flashes += flashed.size
-        }
+        repeat(100) { flashes += run(grid, n, m).size }
         return flashes
     }
 
     fun part2(input: List<String>): Int {
-        return -1
+        val grid = input.map { it.map { c -> c.digitToInt() }.toIntArray() }.toTypedArray()
+        val n = grid.size
+        val m = grid[0].size
+        var i = 0
+        while(true) {
+            i++
+            val flashed = run(grid, n, m).size
+            if (flashed == (n*m)) return i
+        }
     }
 
     val testInput = readInput("Day${day}_test")
     check(part1(testInput) == 1656)
-//    check(part2(testInput) == 0)
+    check(part2(testInput) == 195)
 
     val input = readInput("Day${day}")
     println(part1(input))
-//    println(part2(input))
+    println(part2(input))
+}
+
+private fun run(grid: Array<IntArray>, n: Int, m: Int): MutableSet<Pair<Int, Int>> {
+    val flashed = mutableSetOf<Pair<Int, Int>>()
+    for (i in (0 until n)) for (j in (0 until m)) {
+        grid[i][j] += 1
+    }
+    for (i in (0 until n)) for (j in (0 until m)) {
+        if (grid[i][j] > 9) flashed += flash(i, j, grid, flashed)
+    }
+    return flashed
 }
 
 private fun flash(i: Int, j: Int, grid: Array<IntArray>,
