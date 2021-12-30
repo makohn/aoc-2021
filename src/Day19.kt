@@ -1,15 +1,11 @@
-import Day19.getBeaconCount
-import Day19.parse
-import kotlin.math.pow
-import kotlin.math.sqrt
 
 fun main() {
 
     val day = "19"
 
     fun part1(input: List<String>): Int {
-        val points = parse(input).values.toMutableList()
-        return getBeaconCount(points)
+        val scanners = parse(input)
+        return countBeacons(scanners.map { it.toMutableSet() })
     }
 
     fun part2(input: List<String>): Int {
@@ -18,93 +14,70 @@ fun main() {
 
     val testInput = readInput("Day${day}_test")
     check(part1(testInput) == 79)
-    check(part2(testInput) == 0)
+//    check(part2(testInput) == 0)
 
     val input = readInput("Day${day}")
     println(part1(input))
-    println(part2(input))
+//    println(part2(input))
 }
 
-typealias Point = Triple<Double, Double, Double>
+data class Vector3(val x: Int, val y: Int, val z: Int)
 
-operator fun Point.minus(other: Point) = Point(
-    first - other.first,
-    second - other.second,
-    third - other.third)
+private operator fun Vector3.minus(other: Vector3) = Vector3(x - other.x, y - other.y, z - other.z)
+private operator fun Vector3.plus(other: Vector3) = Vector3(x + other.x, y + other.y, z + other.z)
 
-operator fun Point.plus(other: Point) = Point(
-    first + other.first,
-    second + other.second,
-    third + other.third)
+private fun roll(v: Vector3) = Vector3(v.x, v.z, -v.y)
+private fun turn(v: Vector3) = Vector3(-v.y, v.x, v.z)
 
-object Day19 {
-
-    fun parse(input: List<String>): Map<Int, List<Point>> {
-        val scanners = mutableMapOf<Int, MutableList<Point>>()
-        var current = 0
-        input.filter { it.isNotEmpty() }.forEach { line ->
-            if (line.startsWith("--")) {
-                val scanner = line.replace("[^\\d]".toRegex(), "").toInt()
-                scanners.putIfAbsent(scanner, mutableListOf())
-                current = scanner
-            } else {
-                val (x, y, z) = line.split(",").map { it.toDouble() }
-                scanners[current]?.add(Triple(x, y, z))
+// Credit to https://stackoverflow.com/a/16467849/5095444
+private fun getRotations(v: Vector3) = sequence {
+    var w = v
+    repeat(2) {
+        repeat(3) {             // Yield RTTT 3 times
+            w = roll(w)
+            yield(w)                  // Yield R
+            repeat(3) {         // Yield TTT
+                w = turn(w)
+                yield(w)
             }
         }
-        return scanners
+        w = roll(turn(roll(w)))  // Do RTR
     }
+}
 
-    fun getBeaconCount(points: MutableList<List<Point>>): Int {
-        for (i in (0 .. points.lastIndex)) {
-            val scanner = points[i]
-            for (j in (i + 1 .. points.lastIndex)) {
-                val comparedScanner = points[j].toMutableList()
-                val overlaps = getOverlaps(scanner, comparedScanner)
-                if (overlaps.isNotEmpty()) {
-                    comparedScanner.removeAll(overlaps.keys)
-                    points[j] = comparedScanner
-                }
+private fun parse(input: List<String>): List<Set<Vector3>> {
+    val scanners = mutableListOf<MutableSet<Vector3>>()
+    for (line in input.filter { it.isNotEmpty() }) {
+       if (line.startsWith("--")) {
+           scanners.add(mutableSetOf())
+       } else {
+           val (x, y, z) = line.split(',').map { it.toInt() }
+           scanners.last().add(Vector3(x, y, z))
+       }
+    }
+    return scanners
+}
+
+private fun findOverlaps(s1: Set<Vector3>, s2: Set<Vector3>): Map<Vector3, Set<Vector3>> {
+    val distances = mutableMapOf<Vector3, MutableSet<Vector3>>()
+    for (beacon in s1) {
+        for (otherBeacon in s2) {
+            for (rotation in getRotations(otherBeacon)) {
+                distances.getOrPut(beacon - rotation) { mutableSetOf() }.add(otherBeacon)
             }
         }
-        return points.flatten().count()
     }
+    return distances.filter { it.value.size >= 12 }
+}
 
-    private fun dist(p1: Point, p2: Point): Double {
-        return sqrt((p2.first - p1.first).pow(2)    +
-                       (p2.second - p1.second).pow(2)  +
-                       (p2.third - p1.third).pow(2))
-    }
-
-    private fun getDistanceMap(list: List<Point>): Map<Double, Pair<Point, Point>> {
-        val distances = mutableMapOf<Double, Pair<Point, Point>>()
-        for (i in (list.indices)) {
-            for (j in (i + 1 .. list.lastIndex)) {
-                val p1 = list[i]
-                val p2 = list[j]
-                val distance = dist(p1, p2)
-                distances.putIfAbsent(distance, p1 to p2 )
+private fun countBeacons(scanners: List<MutableSet<Vector3>>): Int {
+    for (i in 0 until scanners.lastIndex) {
+        for (j in i+1 .. scanners.lastIndex) {
+            val overlaps = findOverlaps(scanners[i], scanners[j]).entries.firstOrNull()
+            overlaps?.let {
+                scanners[j].removeAll(it.value)
             }
         }
-        return distances
     }
-
-    private fun getOverlaps(l1: List<Point>, l2: List<Point>): Map<Point, Point> {
-        val overlaps = mutableMapOf<Point, Point>()
-        val distances = getDistanceMap(l1)
-
-        for (i in (l2.indices)) {
-            for (j in (i + 1 .. l2.lastIndex)) {
-                val p1 = l2[i]
-                val p2 = l2[j]
-                val distance = dist(p1, p2)
-                if (distances.contains(distance)) {
-                    val (q1, q2) = distances[distance]!!
-                    overlaps.putIfAbsent(p1, q1)
-                    overlaps.putIfAbsent(p2, q2)
-                }
-            }
-        }
-        return overlaps
-    }
+    return scanners.sumOf { it.count() }.also { println(it) }
 }
