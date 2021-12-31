@@ -58,26 +58,51 @@ private fun parse(input: List<String>): List<Set<Vector3>> {
     return scanners
 }
 
-private fun findOverlaps(s1: Set<Vector3>, s2: Set<Vector3>): Map<Vector3, Set<Vector3>> {
+private fun findOverlaps(s1: Set<Vector3>, s2: Set<Vector3>): Pair<Int, Vector3>? {
     val distances = mutableMapOf<Vector3, MutableSet<Vector3>>()
+    val rotations = s2.map { getRotations(it).toList() }
+    var r = 11
     for (beacon in s1) {
-        for (otherBeacon in s2) {
-            for (rotation in getRotations(otherBeacon)) {
-                distances.getOrPut(beacon - rotation) { mutableSetOf() }.add(otherBeacon)
+            for (rotation in rotations) {
+                for ((i, otherBeacon) in rotation.withIndex()) {
+                val distance = beacon - otherBeacon
+                distances.getOrPut(distance) { mutableSetOf() }.add(otherBeacon)
+                if (distances[distance]!!.size >= 12) r = i
             }
         }
     }
-    return distances.filter { it.value.size >= 12 }
+    val overlaps = distances.filter { it.value.size >= 12 }
+    overlaps.entries.firstOrNull()?.let {
+        return r to it.key
+    }
+    return null
 }
 
 private fun countBeacons(scanners: List<MutableSet<Vector3>>): Int {
-    for (i in 0 until scanners.lastIndex) {
-        for (j in i+1 .. scanners.lastIndex) {
-            val overlaps = findOverlaps(scanners[i], scanners[j]).entries.firstOrNull()
-            overlaps?.let {
-                scanners[j].removeAll(it.value)
+    val translations = mutableMapOf<Pair<Int, Int>, Pair<Int, Vector3>>()
+    for (i in 0 .. scanners.lastIndex) {
+        for (j in 0 .. scanners.lastIndex) {
+            if (i == j || translations.keys.any { it.second == j }) continue
+            val res = findOverlaps(scanners[i], scanners[j])
+            if (res != null) {
+                translations[i to j] = res.first to res.second
             }
         }
     }
-    return scanners.sumOf { it.count() }.also { println(it) }
+    var count = scanners.flatten().distinct().count()
+    do {
+        val oldCount = count
+        for (i in scanners.indices) {
+            val translation = translations.entries.firstOrNull { it.key.second == i }?: continue
+            val (j, k) = translation.key
+            val (r, o) = translation.value
+            val rotations = scanners[i].map { getRotations(it).toList() }
+            val rotated = rotations.map { it[r] }
+            val translated = rotated.map { it + o }
+            scanners[k].clear()
+            scanners[j].addAll(translated)
+        }
+        count = scanners.flatten().distinct().count()
+    } while (oldCount != count)
+    return scanners.flatten().distinct().count()
 }
