@@ -78,31 +78,51 @@ private fun findOverlaps(s1: Set<Vector3>, s2: Set<Vector3>): Pair<Int, Vector3>
     return null
 }
 
-private fun countBeacons(scanners: List<MutableSet<Vector3>>): Int {
+fun translate(vectors: Set<Vector3>, rotation: Int, offset: Vector3): MutableSet<Vector3> {
+    val rotations = vectors.map { getRotations(it).toList() }
+    val rotated = rotations.map { it[rotation] }
+    return rotated.map { it + offset }.toMutableSet()
+}
+
+typealias Translations = MutableMap<Pair<Int, Int>, Pair<Int, Vector3>>
+typealias Translation = Map.Entry<Pair<Int, Int>, Pair<Int, Vector3>>
+
+    private fun countBeacons(scanners: List<MutableSet<Vector3>>): Int {
     val translations = mutableMapOf<Pair<Int, Int>, Pair<Int, Vector3>>()
     for (i in 0 .. scanners.lastIndex) {
         for (j in 0 .. scanners.lastIndex) {
-            if (i == j || translations.keys.any { it.second == j }) continue
+            if (i == j) continue
             val res = findOverlaps(scanners[i], scanners[j])
             if (res != null) {
                 translations[i to j] = res.first to res.second
             }
         }
     }
-    var count = scanners.flatten().distinct().count()
-    do {
-        val oldCount = count
-        for (i in scanners.indices) {
-            val translation = translations.entries.firstOrNull { it.key.second == i }?: continue
-            val (j, k) = translation.key
-            val (r, o) = translation.value
-            val rotations = scanners[i].map { getRotations(it).toList() }
-            val rotated = rotations.map { it[r] }
-            val translated = rotated.map { it + o }
-            scanners[k].clear()
-            scanners[j].addAll(translated)
+
+    fun findTranslations(from: Int, to: Int, t: Translations = translations, path: MutableSet<Translation> = mutableSetOf()): Set<Translation> {
+        if (t.isEmpty() || path.any { it.key.first == from || it.key.second == to }) return mutableSetOf()
+        val candidates = t.filter { it.key.first == from  }
+        val res = candidates.entries.firstOrNull { it.key.second == to }
+        val newTranslations = t.filter { it.key !in candidates }.toMutableMap()
+        if (res != null) path.add(res)
+        else {
+            for (candidate in candidates) {
+                val tt = findTranslations(candidate.key.second, to, newTranslations, path)
+                if (tt.isNotEmpty()) path.add(candidate)
+            }
         }
-        count = scanners.flatten().distinct().count()
-    } while (oldCount != count)
-    return scanners.flatten().distinct().count()
+        return path
+    }
+
+    val beacons = mutableSetOf<Vector3>()
+    beacons.addAll(scanners[0])
+    for (i in 1..scanners.lastIndex) {
+        val translation = findTranslations(0, i)
+        var translated = scanners[i]
+        for (t in translation) {
+            translated = translate(translated, t.value.first, t.value.second)
+        }
+        beacons.addAll(translated)
+    }
+    return beacons.size
 }
