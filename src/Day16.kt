@@ -100,7 +100,7 @@ fun parsePacket(bits: BitStream): Sequence<Packet<*>> = sequence {
                 1L -> {
                     val spc = readNumber(11, bits).toInt()
                     if (spc > 0) {
-                        yield(OperatorPacket(version, type, spc times { parsePacket(bits) }))
+                        yield(OperatorPacket(version, type, parsePacket(bits).take(spc)))
                     } else break
                 }
             }
